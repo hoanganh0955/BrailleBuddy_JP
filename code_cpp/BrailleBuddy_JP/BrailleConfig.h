@@ -12,7 +12,6 @@ constexpr uint8_t BRAILLE[6] = {4, 5, 6, 7, 15, 16};
 constexpr uint8_t PRACTICE = 8;
 constexpr uint8_t STUDY = 18;
 constexpr uint8_t SEND = 17;
-constexpr uint8_t REPLAY = 9;
 
 // MAX98357A
 constexpr int8_t I2S_DIN = 11;

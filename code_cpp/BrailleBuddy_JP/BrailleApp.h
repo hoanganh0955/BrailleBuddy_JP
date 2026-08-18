@@ -83,8 +83,7 @@ class BrailleApp {
   BrailleApp()
       : practiceButton_(Pins::PRACTICE, Timing::STUDY_LONG_PRESS_MS),
         studyButton_(Pins::STUDY, Timing::STUDY_LONG_PRESS_MS),
-        sendButton_(Pins::SEND, Timing::STUDY_LONG_PRESS_MS),
-        replayButton_(Pins::REPLAY, Timing::STUDY_LONG_PRESS_MS) {}
+        sendButton_(Pins::SEND, Timing::STUDY_LONG_PRESS_MS) {}
 
   void begin() {
     Serial.begin(115200);
@@ -96,7 +95,6 @@ class BrailleApp {
     practiceButton_.begin();
     studyButton_.begin();
     sendButton_.begin();
-    replayButton_.begin();
 
     preferencesReady_ = preferences_.begin("braille-jp-v1", false);
     bool launchedBefore = false;
@@ -248,6 +246,16 @@ class BrailleApp {
     }
     selectedLesson_ =
         static_cast<uint8_t>((selectedLesson_ % LESSON_COUNT) + 1U);
+    playSelectedLessonTitle();
+  }
+
+  void selectPreviousLesson() {
+    if (state_ != AppState::LESSON_SELECT) {
+      return;
+    }
+    selectedLesson_ = selectedLesson_ <= 1U
+                          ? LESSON_COUNT
+                          : static_cast<uint8_t>(selectedLesson_ - 1U);
     playSelectedLessonTitle();
   }
 
@@ -590,11 +598,14 @@ class BrailleApp {
     if (state_ == AppState::STUDY_WAIT_INPUT) {
       if (event == ButtonEvent::LONG_PRESS) {
         repeatLesson(ITEMS[currentItemIndex_].lesson);
+      } else {
+        replayCurrentStudyItem();
       }
       return;
     }
 
     if (state_ == AppState::LESSON_SELECT) {
+      selectNextLesson();
       return;
     }
 
@@ -613,6 +624,16 @@ class BrailleApp {
       return;
     }
 
+    if (state_ == AppState::LESSON_SELECT) {
+      selectPreviousLesson();
+      return;
+    }
+
+    if (state_ == AppState::PRACTICE_WAIT_INPUT) {
+      replayCurrentPracticeQuestion();
+      return;
+    }
+
     if (state_ == AppState::RETURNING_USER_CHOICE &&
         !returningChoiceResolved_) {
       reviewPreviousLesson();
@@ -622,7 +643,7 @@ class BrailleApp {
     startPractice();
   }
 
-  void handleReplayButton(ButtonEvent event) {
+  void handleReplayCommand(ButtonEvent event) {
     if (event == ButtonEvent::NONE) {
       return;
     }
@@ -631,8 +652,6 @@ class BrailleApp {
       replayCurrentStudyItem();
     } else if (state_ == AppState::PRACTICE_WAIT_INPUT) {
       replayCurrentPracticeQuestion();
-    } else if (state_ == AppState::LESSON_SELECT) {
-      selectNextLesson();
     }
   }
 
@@ -640,7 +659,6 @@ class BrailleApp {
     const ButtonEvent practiceEvent = practiceButton_.update();
     const ButtonEvent studyEvent = studyButton_.update();
     const ButtonEvent sendEvent = sendButton_.update();
-    const ButtonEvent replayEvent = replayButton_.update();
 
     // Capture the chord while Send is held. The old code sampled only after
     // Send was released, so releasing the dot buttons at nearly the same time
@@ -662,11 +680,6 @@ class BrailleApp {
 
     if (studyEvent != ButtonEvent::NONE) {
       handleStudyButton(studyEvent);
-      return;
-    }
-
-    if (replayEvent != ButtonEvent::NONE) {
-      handleReplayButton(replayEvent);
       return;
     }
 
@@ -773,7 +786,7 @@ class BrailleApp {
     } else if (command == "practice") {
       handlePracticeButton(ButtonEvent::SHORT_PRESS);
     } else if (command == "replay") {
-      handleReplayButton(ButtonEvent::SHORT_PRESS);
+      handleReplayCommand(ButtonEvent::SHORT_PRESS);
     } else if (command == "submit") {
       handleSubmission(readBrailleMask());
     } else if (command == "status") {
@@ -825,7 +838,6 @@ class BrailleApp {
   DebouncedButton practiceButton_;
   DebouncedButton studyButton_;
   DebouncedButton sendButton_;
-  DebouncedButton replayButton_;
 
   AppState state_ = AppState::HOME;
   uint8_t learnedCount_ = 0;

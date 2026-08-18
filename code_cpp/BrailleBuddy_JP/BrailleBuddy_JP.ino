@@ -6,6 +6,6 @@ void setup() {
   app.begin();
 }
 
-void loop() { 
+void loop() {
   app.update();
 }
